@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Weather Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --card: #111827;
+      --card2: #161f30;
+      --border: rgba(255,255,255,0.07);
+      --accent: #38bdf8;
+      --accent2: #818cf8;
+      --warm: #fb923c;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --rain: #60a5fa;
+      --success: #34d399;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(ellipse at 20% 20%, rgba(56,189,248,0.05) 0%, transparent 50%),
+                  radial-gradient(ellipse at 80% 80%, rgba(129,140,248,0.05) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--accent); }
+
+    .search-bar {
+      display: flex;
+      gap: 0.5rem;
+      flex: 1;
+      max-width: 380px;
+    }
+
+    .search-bar input {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.65rem 1rem;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-bar input:focus { border-color: var(--accent); }
+    .search-bar input::placeholder { color: var(--muted); }
+
+    .search-bar button {
+      background: var(--accent);
+      color: #0a0e1a;
+      border: none;
+      padding: 0.65rem 1.2rem;
+      border-radius: 10px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .search-bar button:hover { opacity: 0.85; }
+    .search-bar button:active { transform: scale(0.97); }
+
+    /* Hero card */
+    .hero-card {
+      background: linear-gradient(135deg, #1e3a5f 0%, #162032 60%, #1a1040 100%);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-card::after {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(56,189,248,0.12), transparent 70%);
+      border-radius: 50%;
+    }
+
+    .hero-left .city-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 0.2rem;
+    }
+    .hero-left .country { color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem; }
+    .hero-left .temp-big {
+      font-family: 'Syne', sans-serif;
+      font-size: 5rem;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--accent);
+    }
+    .hero-left .condition {
+      font-size: 1rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+
+    .hero-right {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      align-items: flex-end;
+    }
+
+    .weather-icon-big { font-size: 5rem; line-height: 1; }
+
+    .stat-pills {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 0.4rem 1rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .pill strong { color: var(--text); }
+
+    /* Grid */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 700px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .hero-right { align-items: flex-start; }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+    }
+
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      margin-bottom: 1.2rem;
+    }
+
+    /* Chart containers */
+    .chart-wrap { position: relative; height: 200px; }
+
+    /* Forecast */
+    .forecast-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .forecast-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    @media (max-width: 500px) {
+      .forecast-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .forecast-day {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 0.5rem;
+      text-align: center;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .forecast-day:hover {
+      border-color: var(--accent);
+      transform: translateY(-3px);
+    }
+    .forecast-day.today { border-color: var(--accent); background: var(--card2); }
+    .forecast-day .day-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+    .forecast-day .day-icon { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .forecast-day .day-max {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--warm);
+    }
+    .forecast-day .day-min {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .forecast-day .day-precip {
+      font-size: 0.7rem;
+      color: var(--rain);
+      margin-top: 0.3rem;
+    }
+
+    /* Loading / Error */
+    .loading {
+      text-align: center;
+      padding: 4rem;
+      color: var(--muted);
+      font-size: 1.1rem;
+    }
+    .spinner {
+      display: inline-block;
+      width: 32px; height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #fca5a5;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+    }
+
+    .fade-in { animation: fadeIn 0.5s ease forwards; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+
+    .section-label {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">Sky<span>Lens</span></div>
+    <div class="search-bar">
+      <input type="text" id="cityInput" placeholder="Search city..." value="New Delhi" />
+      <button onclick="loadWeather()">Search</button>
+    </div>
+  </header>
+
+  <div id="error" style="display:none"></div>
+  <div id="loading" class="loading">
+    <div class="spinner"></div><br/>Fetching weather data...
+  </div>
+  <div id="dashboard" style="display:none"></div>
+</div>
+
+<script>
+let tempChart, humidChart;
+
+async function loadWeather() {
+  const city = document.getElementById('cityInput').value.trim();
+  if (!city) return;
+
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('error').style.display = 'none';
+
+  try {
+    const res = await fetch(`/api/weather?city=${encodeURIComponent(city)}`);
+    const data = await res.json();
+
+    if (data.error) {
+      showError(data.error);
+      return;
+    }
+
+    renderDashboard(data);
+  } catch (e) {
+    showError('Failed to fetch weather. Please try again.');
+  }
+}
+
+function showError(msg) {
+  document.getElementById('loading').style.display = 'none';
+  const el = document.getElementById('error');
+  el.style.display = 'block';
+  el.innerHTML = `<div class="error-msg">⚠️ ${msg}</div>`;
+}
+
+function renderDashboard(d) {
+  document.getElementById('loading').style.display = 'none';
+
+  const dash = document.getElementById('dashboard');
+  dash.style.display = 'block';
+  dash.classList.remove('fade-in');
+  void dash.offsetWidth;
+  dash.classList.add('fade-in');
+
+  // Forecast HTML
+  const forecastHTML = d.forecast.map((day, i) => `
+    <div class="forecast-day ${i===0?'today':''}">
+      <div class="day-label">${i===0?'Today':day.day.split(',')[0]}</div>
+      <div class="day-icon">${day.icon}</div>
+      <div class="day-max">${day.max}°</div>
+      <div class="day-min">${day.min}°</div>
+      <div class="day-precip">💧 ${day.precip}mm</div>
+    </div>
+  `).join('');
+
+  dash.innerHTML = `
+    <div class="hero-card">
+      <div class="hero-left">
+        <div class="city-name">${d.city}</div>
+        <div class="country">${d.country}</div>
+        <div class="temp-big">${d.current.temp}°C</div>
+        <div class="condition">${d.current.icon} ${d.current.desc}</div>
+      </div>
+      <div class="hero-right">
+        <div class="weather-icon-big">${d.current.icon}</div>
+        <div class="stat-pills">
+          <div class="pill">💨 Wind <strong>${d.current.windspeed} km/h</strong></div>
+          <div class="pill">💧 Humidity <strong>${d.hourly.humidity[0]}%</strong></div>
+          <div class="pill">🌧️ Rain <strong>${d.hourly.precip[0]} mm</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">7-Day Forecast</div>
+    <div class="forecast-grid">${forecastHTML}</div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Temperature — Next 24h (°C)</div>
+        <div class="chart-wrap"><canvas id="tempChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Humidity — Next 24h (%)</div>
+        <div class="chart-wrap"><canvas id="humidChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Wind Speed — Next 24h (km/h)</div>
+        <div class="chart-wrap"><canvas id="windChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Precipitation — Next 24h (mm)</div>
+        <div class="chart-wrap"><canvas id="precipChart"></canvas></div>
+      </div>
+    </div>
+  `;
+
+  const chartDefaults = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: {
+        ticks: { color: '#64748b', maxRotation: 0, font: { size: 10 } },
+        grid: { color: 'rgba(255,255,255,0.04)' }
+      },
+      y: {
+        ticks: { color: '#64748b', font: { size: 10 } },
+        grid: { color: 'rgba(255,255,255,0.04)' }
+      }
+    }
+  };
+
+  const makeGrad = (ctx, c1, c2) => {
+    const g = ctx.createLinearGradient(0, 0, 0, 200);
+    g.addColorStop(0, c1); g.addColorStop(1, c2); return g;
+  };
+
+  // Temp chart
+  const tc = document.getElementById('tempChart').getContext('2d');
+  new Chart(tc, {
+    type: 'line',
+    data: {
+      labels: d.hourly.labels,
+      datasets: [{
+        data: d.hourly.temps,
+        borderColor: '#38bdf8',
+        backgroundColor: makeGrad(tc, 'rgba(56,189,248,0.3)', 'rgba(56,189,248,0.01)'),
+        fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2
+      }]
+    },
+    options: chartDefaults
+  });
+
+  // Humidity chart
+  const hc = document.getElementById('humidChart').getContext('2d');
+  new Chart(hc, {
+    type: 'line',
+    data: {
+      labels: d.hourly.labels,
+      datasets: [{
+        data: d.hourly.humidity,
+        borderColor: '#818cf8',
+        backgroundColor: makeGrad(hc, 'rgba(129,140,248,0.3)', 'rgba(129,140,248,0.01)'),
+        fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2
+      }]
+    },
+    options: chartDefaults
+  });
+
+  // Wind chart
+  const wc = document.getElementById('windChart').getContext('2d');
+  new Chart(wc, {
+    type: 'bar',
+    data: {
+      labels: d.hourly.labels,
+      datasets: [{
+        data: d.hourly.wind,
+        backgroundColor: 'rgba(52,211,153,0.5)',
+        borderColor: '#34d399',
+        borderWidth: 1, borderRadius: 4
+      }]
+    },
+    options: chartDefaults
+  });
+
+  // Precip chart
+  const pc = document.getElementById('precipChart').getContext('2d');
+  new Chart(pc, {
+    type: 'bar',
+    data: {
+      labels: d.hourly.labels,
+      datasets: [{
+        data: d.hourly.precip,
+        backgroundColor: 'rgba(96,165,250,0.5)',
+        borderColor: '#60a5fa',
+        borderWidth: 1, borderRadius: 4
+      }]
+    },
+    options: chartDefaults
+  });
+}
+
+// Search on Enter key
+document.getElementById('cityInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadWeather();
+});
+
+// Load on start
+loadWeather();
+</script>
+</body>
+</html>
